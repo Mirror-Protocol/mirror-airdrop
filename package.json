@@ -1,0 +1,30 @@
+{
+  "name": "mirror-airdrop",
+  "version": "1.0.0",
+  "description": "Airdrop implemation",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "ts-node ./src/index.ts",
+    "test": "npm test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mirror-Protocol/mirror-airdrop.git"
+  },
+  "author": "YunYeo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Mirror-Protocol/mirror-airdrop/issues"
+  },
+  "homepage": "https://github.com/Mirror-Protocol/mirror-airdrop#readme",
+  "devDependencies": {
+    "@types/node": "^14.14.7",
+    "ts-node": "^9.0.0",
+    "tslint": "^5.12.1",
+    "typescript": "^3.3.3"
+  },
+  "dependencies": {
+    "keccak256": "^1.0.2",
+    "merkletreejs": "^0.2.10"
+  }
+}
