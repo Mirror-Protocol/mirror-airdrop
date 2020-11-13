@@ -1,5 +1,5 @@
 {
-  "name": "mirror-airdrop",
+  "name": "@mirror-protocol/mirror-airdrop",
   "version": "1.0.0",
   "description": "Airdrop implemation",
   "main": "dist/index.js",
