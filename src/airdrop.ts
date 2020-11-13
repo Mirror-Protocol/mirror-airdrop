@@ -1,5 +1,5 @@
-import keccak256 from "keccak256";
-import { MerkleTree } from "merkletreejs";
+import keccak256 from 'keccak256';
+import { MerkleTree } from 'merkletreejs';
 
 class Airdrop {
   private tree: MerkleTree;
@@ -10,24 +10,26 @@ class Airdrop {
   }
 
   public getMerkleRoot(): string {
-    return this.tree.getHexRoot();
+    return this.tree.getHexRoot().replace('0x', '');
   }
 
   public getMerkleProof(account: {
     address: string;
     amount: string;
   }): string[] {
-    return this.tree.getHexProof(keccak256(account.address + account.amount));
+    return this.tree
+      .getHexProof(keccak256(account.address + account.amount))
+      .map((v) => v.replace('0x', ''));
   }
 
   public verify(
     proof: string[],
-    account: { address: string; amount: string },
+    account: { address: string; amount: string }
   ): boolean {
     let hashBuf = keccak256(account.address + account.amount);
 
     proof.forEach((proofElem) => {
-      const proofBuf = Buffer.from(proofElem.replace("0x", ""), "hex");
+      const proofBuf = Buffer.from(proofElem, 'hex');
 
       if (hashBuf < proofBuf) {
         hashBuf = keccak256(Buffer.concat([hashBuf, proofBuf]));
@@ -36,7 +38,7 @@ class Airdrop {
       }
     });
 
-    return this.tree.getHexRoot().replace("0x", "") === hashBuf.toString("hex");
+    return this.getMerkleRoot() === hashBuf.toString('hex');
   }
 }
 

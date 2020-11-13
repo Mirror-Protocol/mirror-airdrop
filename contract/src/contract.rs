@@ -3,8 +3,13 @@ use cosmwasm_std::{
     InitResponse, InitResult, Querier, StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 
-use crate::msg::{ConfigResponse, HandleMsg, InitMsg, QueryMsg};
-use crate::state::{read_config, store_config, Config};
+use crate::msg::{
+    ConfigResponse, HandleMsg, InitMsg, LatestStageResponse, MerkleRootResponse, QueryMsg,
+};
+use crate::state::{
+    read_claimed, read_config, read_latest_stage, read_merkle_root, store_claimed, store_config,
+    store_latest_stage, store_merkle_root, Config,
+};
 
 use cw20::Cw20HandleMsg;
 use hex;
@@ -21,9 +26,12 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         &Config {
             owner: deps.api.canonical_address(&msg.owner)?,
             mirror_token: deps.api.canonical_address(&msg.mirror_token)?,
-            merkle_root: msg.merkle_root,
         },
     )?;
+
+    let stage: u8 = 1;
+    store_latest_stage(&mut deps.storage, stage)?;
+    store_merkle_root(&mut deps.storage, stage, msg.merkle_root)?;
 
     Ok(InitResponse::default())
 }
@@ -34,10 +42,15 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> HandleResult {
     match msg {
-        HandleMsg::UpdateConfig { owner, merkle_root } => {
-            try_update_config(deps, env, owner, merkle_root)
+        HandleMsg::UpdateConfig { owner } => try_update_config(deps, env, owner),
+        HandleMsg::RegisterMerkleRoot { merkle_root } => {
+            try_register_merkle_root(deps, env, merkle_root)
         }
-        HandleMsg::Claim { amount, proof } => try_claim(deps, env, amount, proof),
+        HandleMsg::Claim {
+            stage,
+            amount,
+            proof,
+        } => try_claim(deps, env, stage, amount, proof),
     }
 }
 
@@ -45,20 +58,14 @@ pub fn try_update_config<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     owner: Option<HumanAddr>,
-    merkle_root: Option<String>,
 ) -> StdResult<HandleResponse> {
     let mut config: Config = read_config(&deps.storage)?;
-
     if deps.api.canonical_address(&env.message.sender)? != config.owner {
         return Err(StdError::unauthorized());
     }
 
     if let Some(owner) = owner {
         config.owner = deps.api.canonical_address(&owner)?;
-    }
-
-    if let Some(merkle_root) = merkle_root {
-        config.merkle_root = merkle_root;
     }
 
     store_config(&mut deps.storage, &config)?;
@@ -69,13 +76,50 @@ pub fn try_update_config<S: Storage, A: Api, Q: Querier>(
     })
 }
 
+pub fn try_register_merkle_root<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    merkle_root: String,
+) -> StdResult<HandleResponse> {
+    let config: Config = read_config(&deps.storage)?;
+    if deps.api.canonical_address(&env.message.sender)? != config.owner {
+        return Err(StdError::unauthorized());
+    }
+
+    let latest_stage: u8 = read_latest_stage(&deps.storage)?;
+    let stage = latest_stage + 1;
+
+    store_merkle_root(&mut deps.storage, stage, merkle_root.to_string())?;
+    store_latest_stage(&mut deps.storage, stage)?;
+
+    Ok(HandleResponse {
+        messages: vec![],
+        log: vec![
+            log("action", "register_merkle_root"),
+            log("stage", stage),
+            log("merkle_root", merkle_root),
+        ],
+        data: None,
+    })
+}
+
 pub fn try_claim<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
+    stage: u8,
     amount: Uint128,
     proof: Vec<String>,
 ) -> StdResult<HandleResponse> {
     let config: Config = read_config(&deps.storage)?;
+    let merkle_root: String = read_merkle_root(&deps.storage, stage)?;
+
+    let user_raw = deps.api.canonical_address(&env.message.sender)?;
+
+    // If user claimed target stage, return err
+    if read_claimed(&deps.storage, &user_raw, stage)? {
+        return Err(StdError::generic_err("Already claimed"));
+    }
+
     let user_input: String = env.message.sender.to_string() + &amount.to_string();
     let mut hash: [u8; 32] = sha3::Keccak256::digest(user_input.as_bytes())
         .as_slice()
@@ -99,10 +143,13 @@ pub fn try_claim<S: Storage, A: Api, Q: Querier>(
     }
 
     let mut root_buf: [u8; 32] = [0; 32];
-    hex::decode_to_slice(config.merkle_root, &mut root_buf).unwrap();
+    hex::decode_to_slice(merkle_root, &mut root_buf).unwrap();
     if root_buf != hash {
         return Err(StdError::generic_err("Verification is failed"));
     }
+
+    // Update claim index to the current stage
+    store_claimed(&mut deps.storage, &user_raw, stage)?;
 
     Ok(HandleResponse {
         messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
@@ -115,6 +162,7 @@ pub fn try_claim<S: Storage, A: Api, Q: Querier>(
         })],
         log: vec![
             log("action", "claim"),
+            log("stage", stage),
             log("address", env.message.sender),
             log("amount", amount),
         ],
@@ -143,6 +191,8 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::MerkleRoot { stage } => to_binary(&query_merkle_root(deps, stage)?),
+        QueryMsg::LatestStage {} => to_binary(&query_latest_stage(deps)?),
     }
 }
 
@@ -153,8 +203,29 @@ pub fn query_config<S: Storage, A: Api, Q: Querier>(
     let resp = ConfigResponse {
         owner: deps.api.human_address(&state.owner)?,
         mirror_token: deps.api.human_address(&state.mirror_token)?,
-        merkle_root: state.merkle_root,
     };
+
+    Ok(resp)
+}
+
+pub fn query_merkle_root<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    stage: u8,
+) -> StdResult<MerkleRootResponse> {
+    let merkle_root = read_merkle_root(&deps.storage, stage)?;
+    let resp = MerkleRootResponse {
+        stage: stage,
+        merkle_root: merkle_root,
+    };
+
+    Ok(resp)
+}
+
+pub fn query_latest_stage<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+) -> StdResult<LatestStageResponse> {
+    let latest_stage = read_latest_stage(&deps.storage)?;
+    let resp = LatestStageResponse { latest_stage };
 
     Ok(resp)
 }

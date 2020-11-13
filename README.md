@@ -37,14 +37,14 @@ import { accounts } from "../airdrop.json";
 const airdrop = new Airdrop(accounts);
 const proof = airdrop.getMerkleProof(accounts[3]);
 
-console.log(airdrop.getMerkleRoot());
-console.log(proof);
-console.log(accounts[3]);
-console.log(airdrop.verify(proof, accounts[3]));
+console.log("Merkle Root", airdrop.getMerkleRoot());
+console.log("Merkle Proof", proof);
+console.log("Target Acc", accounts[3]);
+console.log("Verified", airdrop.verify(proof, accounts[3]));
 ```
 
 ## How to build contract
 ```
 $ docker run --rm -v "$(pwd)":/code \  --mount type=volume,source="devcontract_cache_airdrop",target=/code/contracts/airdrop/target \
-  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \cosmwasm/rust-optimizer:0.10.2 ./contract/staking
+  --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \cosmwasm/rust-optimizer:0.10.2 ./contract
 ```

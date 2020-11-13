@@ -1,5 +1,5 @@
-import Airdrop from "./airdrop";
+import Airdrop from './Airdrop';
 
 export = {
-  Airdrop,
+  Airdrop
 };

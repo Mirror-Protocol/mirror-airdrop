@@ -2,14 +2,38 @@
   "name": "mirror-airdrop",
   "version": "1.0.0",
   "description": "Airdrop implemation",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=12"
+  },
   "scripts": {
     "start": "ts-node ./src/index.ts",
-    "test": "npm test"
+    "build": "tsc --module commonjs && webpack --mode production",
+    "test": "jest",
+    "prettier": "prettier --write ./src/**/*.ts",
+    "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
+    "doc": "typedoc",
+    "prepublishOnly": "npm run build"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Mirror-Protocol/mirror-airdrop.git"
+  },
+  "lint-staged": {
+    "./src/**/*.ts": [
+      "prettier --write",
+      "eslint"
+    ]
+  },
+  "prettier": {
+    "semi": true,
+    "singleQuote": true,
+    "trailingComma": "none",
+    "arrowParens": "always"
   },
   "author": "YunYeo",
   "license": "MIT",
@@ -18,10 +42,30 @@
   },
   "homepage": "https://github.com/Mirror-Protocol/mirror-airdrop#readme",
   "devDependencies": {
+    "@types/jest": "^26.0.15",
     "@types/node": "^14.14.7",
+    "@typescript-eslint/eslint-plugin": "^4.7.0",
+    "@typescript-eslint/parser": "^4.7.0",
+    "eslint": "^7.13.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-standard": "^14.1.1",
+    "eslint-plugin-import": "^2.22.1",
+    "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^4.2.1",
+    "eslint-plugin-standard": "^4.1.0",
+    "husky": "^4.3.0",
+    "jest": "^26.6.3",
+    "lint-staged": "^10.5.1",
+    "prettier": "^2.1.2",
+    "ts-jest": "^26.4.4",
+    "ts-loader": "^8.0.11",
     "ts-node": "^9.0.0",
-    "tslint": "^5.12.1",
-    "typescript": "^3.3.3"
+    "tsconfig-paths-webpack-plugin": "^3.3.0",
+    "typedoc": "^0.19.2",
+    "typescript": "^4.0.5",
+    "webpack": "^4",
+    "webpack-bundle-analyzer": "^4.1.0",
+    "webpack-cli": "^4.2.0"
   },
   "dependencies": {
     "keccak256": "^1.0.2",
