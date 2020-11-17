@@ -7,7 +7,6 @@ use cosmwasm_std::{HumanAddr, Uint128};
 pub struct InitMsg {
     pub owner: HumanAddr,
     pub mirror_token: HumanAddr,
-    pub merkle_root: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

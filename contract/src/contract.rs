@@ -29,9 +29,8 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         },
     )?;
 
-    let stage: u8 = 1;
+    let stage: u8 = 0;
     store_latest_stage(&mut deps.storage, stage)?;
-    store_merkle_root(&mut deps.storage, stage, msg.merkle_root)?;
 
     Ok(InitResponse::default())
 }

@@ -13,7 +13,6 @@ fn proper_initialization() {
     let msg = InitMsg {
         owner: HumanAddr("owner0000".to_string()),
         mirror_token: HumanAddr("mirror0000".to_string()),
-        merkle_root: "85e33930e7a8f015316cb4a53a4c45d26a69f299fc4c83f17357e1fd62e8fd95".to_string(),
     };
 
     let env = mock_env("addr0000", &[]);
@@ -29,20 +28,7 @@ fn proper_initialization() {
 
     let res = query(&deps, QueryMsg::LatestStage {}).unwrap();
     let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
-    assert_eq!(1u8, latest_stage.latest_stage);
-
-    let res = query(
-        &deps,
-        QueryMsg::MerkleRoot {
-            stage: latest_stage.latest_stage,
-        },
-    )
-    .unwrap();
-    let merkle_root: MerkleRootResponse = from_binary(&res).unwrap();
-    assert_eq!(
-        "85e33930e7a8f015316cb4a53a4c45d26a69f299fc4c83f17357e1fd62e8fd95".to_string(),
-        merkle_root.merkle_root
-    );
+    assert_eq!(0u8, latest_stage.latest_stage);
 }
 
 #[test]
@@ -52,7 +38,6 @@ fn update_config() {
     let msg = InitMsg {
         owner: HumanAddr::from("owner0000"),
         mirror_token: HumanAddr::from("mirror0000"),
-        merkle_root: "85e33930e7a8f015316cb4a53a4c45d26a69f299fc4c83f17357e1fd62e8fd95".to_string(),
     };
 
     let env = mock_env("addr0000", &[]);
@@ -90,7 +75,6 @@ fn register_merkle_root() {
     let msg = InitMsg {
         owner: HumanAddr::from("owner0000"),
         mirror_token: HumanAddr::from("mirror0000"),
-        merkle_root: "85e33930e7a8f015316cb4a53a4c45d26a69f299fc4c83f17357e1fd62e8fd95".to_string(),
     };
 
     let env = mock_env("addr0000", &[]);
@@ -107,7 +91,7 @@ fn register_merkle_root() {
         res.log,
         vec![
             log("action", "register_merkle_root"),
-            log("stage", "2"),
+            log("stage", "1"),
             log(
                 "merkle_root",
                 "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
@@ -117,7 +101,7 @@ fn register_merkle_root() {
 
     let res = query(&deps, QueryMsg::LatestStage {}).unwrap();
     let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
-    assert_eq!(2u8, latest_stage.latest_stage);
+    assert_eq!(1u8, latest_stage.latest_stage);
 
     let res = query(
         &deps,
@@ -140,18 +124,22 @@ fn claim() {
     let msg = InitMsg {
         owner: HumanAddr::from("owner0000"),
         mirror_token: HumanAddr::from("mirror0000"),
-        merkle_root: "85e33930e7a8f015316cb4a53a4c45d26a69f299fc4c83f17357e1fd62e8fd95".to_string(),
     };
 
     let env = mock_env("addr0000", &[]);
     let _res = init(&mut deps, env, msg).unwrap();
 
-    // Register new merkle tree
+    // Register merkle roots
+    let env = mock_env("owner0000", &[]);
+    let msg = HandleMsg::RegisterMerkleRoot {
+        merkle_root: "85e33930e7a8f015316cb4a53a4c45d26a69f299fc4c83f17357e1fd62e8fd95".to_string(),
+    };
+    let _res = handle(&mut deps, env, msg).unwrap();
+
     let env = mock_env("owner0000", &[]);
     let msg = HandleMsg::RegisterMerkleRoot {
         merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
     };
-
     let _res = handle(&mut deps, env, msg).unwrap();
 
     let msg = HandleMsg::Claim {
