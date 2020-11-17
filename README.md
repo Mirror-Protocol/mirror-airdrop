@@ -48,5 +48,5 @@ console.log("Verified", airdrop.verify(proof, accounts[3]));
 $ docker run --rm -v "$(pwd)":/code \
   --mount type=volume,source="devcontract_cache_airdrop",target=/code/contracts/airdrop/target \
   --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
-  cosmwasm/rust-optimizer:0.10.2 ./contract
+  cosmwasm/rust-optimizer:0.10.2 ./contracts/airdrop
 ```
