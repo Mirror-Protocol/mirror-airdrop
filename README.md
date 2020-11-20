@@ -32,15 +32,26 @@ $ npm install @mirror-protocol/mirror-airdrop
 
 ### Get proof with user input
 ```javascript
+import { Airdrop } from "@mirror-protocol/mirror-airdrop";
 import { accounts } from "../airdrop.json";
 
 const airdrop = new Airdrop(accounts);
-const proof = airdrop.getMerkleProof(accounts[3]);
+const proof = airdrop.getMerkleProof(accounts[0]);
 
 console.log("Merkle Root", airdrop.getMerkleRoot());
 console.log("Merkle Proof", proof);
-console.log("Target Acc", accounts[3]);
-console.log("Verified", airdrop.verify(proof, accounts[3]));
+console.log("Target Acc", accounts[0]);
+console.log("Verified", airdrop.verify(proof, accounts[0]));
+```
+
+## Take snapshot
+```javascript
+import { Snapshot } from "@mirror-protocol/mirror-airdrop";
+
+const snapshot = new Snapsnot("https://lcd.terra.dev");
+snapshot.takeSnapshot(10000).then(delegators => {
+  console.log(delegators)
+});
 ```
 
 ## How to build contract

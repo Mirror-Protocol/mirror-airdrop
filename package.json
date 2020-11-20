@@ -44,6 +44,8 @@
   "devDependencies": {
     "@types/jest": "^26.0.15",
     "@types/node": "^14.14.7",
+    "@types/request": "^2.48.5",
+    "@types/request-promise": "^4.1.46",
     "@typescript-eslint/eslint-plugin": "^4.7.0",
     "@typescript-eslint/parser": "^4.7.0",
     "eslint": "^7.13.0",
@@ -69,6 +71,8 @@
   },
   "dependencies": {
     "keccak256": "^1.0.2",
-    "merkletreejs": "^0.2.10"
+    "merkletreejs": "^0.2.10",
+    "request": "^2.88.2",
+    "request-promise": "^4.2.6"
   }
 }
