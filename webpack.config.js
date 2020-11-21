@@ -12,19 +12,24 @@ const commonConfig = {
       {
         test: /\.tsx?$/,
         use: 'ts-loader',
-        exclude: /node_modules/,
-      },
-    ],
+        exclude: /node_modules/
+      }
+    ]
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.js'],
-    plugins: [new TsconfigPathsPlugin()],
+    plugins: [new TsconfigPathsPlugin()]
   },
   plugins: [
     new webpack.IgnorePlugin(
       /wordlists\/(french|spanish|italian|korean|chinese_simplified|chinese_traditional|japanese)\.json$/
-    ),
+    )
   ],
+  node: {
+    net: 'empty',
+    tls: 'empty',
+    fs: 'empty'
+  }
 };
 
 const webConfig = {
@@ -34,12 +39,12 @@ const webConfig = {
     filename: 'bundle.js',
     libraryTarget: 'umd',
     library: 'Mirror',
-    path: path.resolve(__dirname, 'dist'),
+    path: path.resolve(__dirname, 'dist')
   },
   plugins: [
-    ...commonConfig.plugins,
+    ...commonConfig.plugins
     // new BundleAnalyzerPlugin(),
-  ],
+  ]
 };
 
 const nodeConfig = {
@@ -48,8 +53,8 @@ const nodeConfig = {
   output: {
     path: path.resolve(__dirname, 'dist'),
     libraryTarget: 'commonjs',
-    filename: 'bundle.node.js',
-  },
+    filename: 'bundle.node.js'
+  }
 };
 
 module.exports = [webConfig, nodeConfig];
