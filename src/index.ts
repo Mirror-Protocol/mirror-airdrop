@@ -1,5 +1,5 @@
-import Airdrop from './airdrop';
-import Snapshot from './snapshot';
+import Airdrop from './Airdrop';
+import Snapshot from './Snapshot';
 
 export = {
   Airdrop,
