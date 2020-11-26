@@ -41,19 +41,19 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> HandleResult {
     match msg {
-        HandleMsg::UpdateConfig { owner } => try_update_config(deps, env, owner),
+        HandleMsg::UpdateConfig { owner } => update_config(deps, env, owner),
         HandleMsg::RegisterMerkleRoot { merkle_root } => {
-            try_register_merkle_root(deps, env, merkle_root)
+            register_merkle_root(deps, env, merkle_root)
         }
         HandleMsg::Claim {
             stage,
             amount,
             proof,
-        } => try_claim(deps, env, stage, amount, proof),
+        } => claim(deps, env, stage, amount, proof),
     }
 }
 
-pub fn try_update_config<S: Storage, A: Api, Q: Querier>(
+pub fn update_config<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     owner: Option<HumanAddr>,
@@ -75,7 +75,7 @@ pub fn try_update_config<S: Storage, A: Api, Q: Querier>(
     })
 }
 
-pub fn try_register_merkle_root<S: Storage, A: Api, Q: Querier>(
+pub fn register_merkle_root<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     merkle_root: String,
@@ -102,7 +102,7 @@ pub fn try_register_merkle_root<S: Storage, A: Api, Q: Querier>(
     })
 }
 
-pub fn try_claim<S: Storage, A: Api, Q: Querier>(
+pub fn claim<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
     stage: u8,
