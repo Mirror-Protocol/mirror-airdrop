@@ -35,6 +35,7 @@ pub enum QueryMsg {
     Config {},
     MerkleRoot { stage: u8 },
     LatestStage {},
+    IsClaimed { stage: u8, address: HumanAddr },
 }
 
 // We define a custom struct for each query response
@@ -55,4 +56,10 @@ pub struct MerkleRootResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LatestStageResponse {
     pub latest_stage: u8,
+}
+
+// We define a custom struct for each query response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct IsClaimedResponse {
+    pub is_claimed: bool,
 }

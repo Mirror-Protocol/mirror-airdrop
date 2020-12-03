@@ -1,1 +1,1 @@
-e03b06d071f9a7077397bd1682fdf5409f676912c75ae610fc809d03b96dc729  mirror_airdrop.wasm
+4abeaf88b9213dd1e0774d94ea19b86f70c8e1a47abc57ae3bbc48e18ba1322d  mirror_airdrop.wasm

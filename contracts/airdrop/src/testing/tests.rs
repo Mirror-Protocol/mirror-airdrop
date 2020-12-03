@@ -1,6 +1,7 @@
 use crate::contract::{handle, init, query};
 use crate::msg::{
-    ConfigResponse, HandleMsg, InitMsg, LatestStageResponse, MerkleRootResponse, QueryMsg,
+    ConfigResponse, HandleMsg, InitMsg, IsClaimedResponse, LatestStageResponse, MerkleRootResponse,
+    QueryMsg,
 };
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{from_binary, log, to_binary, CosmosMsg, HumanAddr, StdError, Uint128, WasmMsg};
@@ -242,6 +243,22 @@ fn claim() {
             log("address", "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
             log("amount", "1000001")
         ]
+    );
+
+    assert_eq!(
+        true,
+        from_binary::<IsClaimedResponse>(
+            &query(
+                &mut deps,
+                QueryMsg::IsClaimed {
+                    stage: 1,
+                    address: HumanAddr::from("terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
+                }
+            )
+            .unwrap()
+        )
+        .unwrap()
+        .is_claimed
     );
 
     let res = handle(&mut deps, env.clone(), msg.clone());

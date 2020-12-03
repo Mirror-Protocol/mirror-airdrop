@@ -4,7 +4,8 @@ use cosmwasm_std::{
 };
 
 use crate::msg::{
-    ConfigResponse, HandleMsg, InitMsg, LatestStageResponse, MerkleRootResponse, QueryMsg,
+    ConfigResponse, HandleMsg, InitMsg, IsClaimedResponse, LatestStageResponse, MerkleRootResponse,
+    QueryMsg,
 };
 use crate::state::{
     read_claimed, read_config, read_latest_stage, read_merkle_root, store_claimed, store_config,
@@ -219,6 +220,9 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::MerkleRoot { stage } => to_binary(&query_merkle_root(deps, stage)?),
         QueryMsg::LatestStage {} => to_binary(&query_latest_stage(deps)?),
+        QueryMsg::IsClaimed { stage, address } => {
+            to_binary(&query_is_claimed(deps, stage, address)?)
+        }
     }
 }
 
@@ -252,6 +256,19 @@ pub fn query_latest_stage<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<LatestStageResponse> {
     let latest_stage = read_latest_stage(&deps.storage)?;
     let resp = LatestStageResponse { latest_stage };
+
+    Ok(resp)
+}
+
+pub fn query_is_claimed<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    stage: u8,
+    address: HumanAddr,
+) -> StdResult<IsClaimedResponse> {
+    let user_raw = deps.api.canonical_address(&address)?;
+    let resp = IsClaimedResponse {
+        is_claimed: read_claimed(&deps.storage, &user_raw, stage)?,
+    };
 
     Ok(resp)
 }
