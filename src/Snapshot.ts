@@ -27,7 +27,7 @@ class Snapshot {
         };
       }> = JSON.parse(
         await request.get(
-          `${this.URL}/staking/validators/${operator_addr}/delegations`
+          `${this.URL}/staking/validators/${operator_addr}/delegations?height=${block}`
         )
       )['result'];
 

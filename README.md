@@ -48,7 +48,7 @@ console.log("Verified", airdrop.verify(proof, accounts[0]));
 ```javascript
 import { Snapshot } from "@mirror-protocol/mirror-airdrop";
 
-const snapshot = new Snapsnot("https://lcd.terra.dev");
+const snapshot = new Snapshot("https://lcd.terra.dev");
 snapshot.takeSnapshot(10000).then(delegators => {
   console.log(delegators)
 });

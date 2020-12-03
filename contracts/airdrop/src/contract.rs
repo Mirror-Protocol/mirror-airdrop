@@ -42,6 +42,9 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 ) -> HandleResult {
     match msg {
         HandleMsg::UpdateConfig { owner } => update_config(deps, env, owner),
+        HandleMsg::UpdateMerkleRoot { stage, merkle_root } => {
+            update_merkle_root(deps, env, stage, merkle_root)
+        }
         HandleMsg::RegisterMerkleRoot { merkle_root } => {
             register_merkle_root(deps, env, merkle_root)
         }
@@ -51,6 +54,30 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
             proof,
         } => claim(deps, env, stage, amount, proof),
     }
+}
+
+pub fn update_merkle_root<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    stage: u8,
+    merkle_root: String,
+) -> StdResult<HandleResponse> {
+    let config: Config = read_config(&deps.storage)?;
+    if deps.api.canonical_address(&env.message.sender)? != config.owner {
+        return Err(StdError::unauthorized());
+    }
+
+    store_merkle_root(&mut deps.storage, stage, merkle_root.to_string())?;
+
+    Ok(HandleResponse {
+        messages: vec![],
+        log: vec![
+            log("action", "update_merkle_root"),
+            log("stage", stage),
+            log("merkle_root", merkle_root),
+        ],
+        data: None,
+    })
 }
 
 pub fn update_config<S: Storage, A: Api, Q: Querier>(

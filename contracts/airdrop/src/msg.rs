@@ -15,6 +15,10 @@ pub enum HandleMsg {
     UpdateConfig {
         owner: Option<HumanAddr>,
     },
+    UpdateMerkleRoot {
+        stage: u8,
+        merkle_root: String,
+    },
     RegisterMerkleRoot {
         merkle_root: String,
     },
