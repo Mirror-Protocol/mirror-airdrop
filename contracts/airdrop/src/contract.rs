@@ -1,11 +1,12 @@
 use cosmwasm_std::{
     log, to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, HandleResult, HumanAddr,
-    InitResponse, InitResult, Querier, StdError, StdResult, Storage, Uint128, WasmMsg,
+    InitResponse, InitResult, MigrateResponse, MigrateResult, Querier, StdError, StdResult,
+    Storage, Uint128, WasmMsg,
 };
 
 use crate::msg::{
     ConfigResponse, HandleMsg, InitMsg, IsClaimedResponse, LatestStageResponse, MerkleRootResponse,
-    QueryMsg,
+    MigrateMsg, QueryMsg,
 };
 use crate::state::{
     read_claimed, read_config, read_latest_stage, read_merkle_root, store_claimed, store_config,
@@ -271,4 +272,12 @@ pub fn query_is_claimed<S: Storage, A: Api, Q: Querier>(
     };
 
     Ok(resp)
+}
+
+pub fn migrate<S: Storage, A: Api, Q: Querier>(
+    _deps: &mut Extern<S, A, Q>,
+    _env: Env,
+    _msg: MigrateMsg,
+) -> MigrateResult {
+    Ok(MigrateResponse::default())
 }
