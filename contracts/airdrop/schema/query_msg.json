@@ -44,6 +44,36 @@
           "type": "object"
         }
       }
+    },
+    {
+      "type": "object",
+      "required": [
+        "is_claimed"
+      ],
+      "properties": {
+        "is_claimed": {
+          "type": "object",
+          "required": [
+            "address",
+            "stage"
+          ],
+          "properties": {
+            "address": {
+              "$ref": "#/definitions/HumanAddr"
+            },
+            "stage": {
+              "type": "integer",
+              "format": "uint8",
+              "minimum": 0.0
+            }
+          }
+        }
+      }
     }
-  ]
+  ],
+  "definitions": {
+    "HumanAddr": {
+      "type": "string"
+    }
+  }
 }
