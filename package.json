@@ -1,6 +1,6 @@
 {
   "name": "@mirror-protocol/mirror-airdrop",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Airdrop implementation",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -71,7 +71,7 @@
   },
   "dependencies": {
     "keccak256": "^1.0.2",
-    "merkletreejs": "^0.2.16",
+    "merkletreejs": "0.2.16",
     "request": "^2.88.2",
     "request-promise": "^4.2.6"
   }
