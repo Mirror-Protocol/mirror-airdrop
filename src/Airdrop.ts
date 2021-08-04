@@ -31,7 +31,7 @@ class Airdrop {
     proof.forEach((proofElem) => {
       const proofBuf = Buffer.from(proofElem, 'hex');
 
-      if (hashBuf < proofBuf) {
+      if (Buffer.compare(hashBuf, proofBuf) === -1) {
         hashBuf = keccak256(Buffer.concat([hashBuf, proofBuf]));
       } else {
         hashBuf = keccak256(Buffer.concat([proofBuf, hashBuf]));
