@@ -1,111 +1,112 @@
-use crate::contract::{handle, init, query};
+use crate::contract::{execute, instantiate, query};
 use crate::msg::{
-    ConfigResponse, HandleMsg, InitMsg, IsClaimedResponse, LatestStageResponse, MerkleRootResponse,
-    QueryMsg,
+    ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
+    MerkleRootResponse, QueryMsg,
 };
-use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{from_binary, log, to_binary, CosmosMsg, HumanAddr, StdError, Uint128, WasmMsg};
-use cw20::Cw20HandleMsg;
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::{attr, from_binary, to_binary, CosmosMsg, StdError, SubMsg, Uint128, WasmMsg};
+use cw20::Cw20ExecuteMsg;
 
 #[test]
-fn proper_initialization() {
-    let mut deps = mock_dependencies(20, &[]);
+fn proper_instantiate() {
+    let mut deps = mock_dependencies(&[]);
 
-    let msg = InitMsg {
-        owner: HumanAddr("owner0000".to_string()),
-        mirror_token: HumanAddr("mirror0000".to_string()),
+    let msg = InstantiateMsg {
+        owner: "owner0000".to_string(),
+        mirror_token: "mirror0000".to_string(),
     };
 
-    let env = mock_env("addr0000", &[]);
+    let info = mock_info("addr0000", &[]);
 
     // we can just call .unwrap() to assert this was a success
-    let _res = init(&mut deps, env, msg).unwrap();
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // it worked, let's query the state
-    let res = query(&deps, QueryMsg::Config {}).unwrap();
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
     let config: ConfigResponse = from_binary(&res).unwrap();
     assert_eq!("owner0000", config.owner.as_str());
     assert_eq!("mirror0000", config.mirror_token.as_str());
 
-    let res = query(&deps, QueryMsg::LatestStage {}).unwrap();
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::LatestStage {}).unwrap();
     let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
     assert_eq!(0u8, latest_stage.latest_stage);
 }
 
 #[test]
 fn update_config() {
-    let mut deps = mock_dependencies(20, &[]);
+    let mut deps = mock_dependencies(&[]);
 
-    let msg = InitMsg {
-        owner: HumanAddr::from("owner0000"),
-        mirror_token: HumanAddr::from("mirror0000"),
+    let msg = InstantiateMsg {
+        owner: "owner0000".to_string(),
+        mirror_token: "mirror0000".to_string(),
     };
 
-    let env = mock_env("addr0000", &[]);
-    let _res = init(&mut deps, env.clone(), msg).unwrap();
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // update owner
-    let env = mock_env("owner0000", &[]);
-    let msg = HandleMsg::UpdateConfig {
-        owner: Some(HumanAddr("owner0001".to_string())),
+    let info = mock_info("owner0000", &[]);
+    let msg = ExecuteMsg::UpdateConfig {
+        owner: Some("owner0001".to_string()),
     };
 
-    let res = handle(&mut deps, env, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
 
     // it worked, let's query the state
-    let res = query(&deps, QueryMsg::Config {}).unwrap();
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
     let config: ConfigResponse = from_binary(&res).unwrap();
     assert_eq!("owner0001", config.owner.as_str());
 
-    // Unauthorzied err
-    let env = mock_env("owner0000", &[]);
-    let msg = HandleMsg::UpdateConfig { owner: None };
+    // Unauthorized err
+    let info = mock_info("owner0000", &[]);
+    let msg = ExecuteMsg::UpdateConfig { owner: None };
 
-    let res = handle(&mut deps, env, msg);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StdError::Unauthorized { .. }) => {}
+        Err(StdError::GenericErr { msg, .. }) => assert_eq!(msg, "unauthorized"),
         _ => panic!("Must return unauthorized error"),
     }
 }
 
 #[test]
 fn register_merkle_root() {
-    let mut deps = mock_dependencies(20, &[]);
+    let mut deps = mock_dependencies(&[]);
 
-    let msg = InitMsg {
-        owner: HumanAddr::from("owner0000"),
-        mirror_token: HumanAddr::from("mirror0000"),
+    let msg = InstantiateMsg {
+        owner: "owner0000".to_string(),
+        mirror_token: "mirror0000".to_string(),
     };
 
-    let env = mock_env("addr0000", &[]);
-    let _res = init(&mut deps, env.clone(), msg).unwrap();
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // register new merkle root
-    let env = mock_env("owner0000", &[]);
-    let msg = HandleMsg::RegisterMerkleRoot {
+    let info = mock_info("owner0000", &[]);
+    let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
     };
 
-    let res = handle(&mut deps, env, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
-        res.log,
+        res.attributes,
         vec![
-            log("action", "register_merkle_root"),
-            log("stage", "1"),
-            log(
+            attr("action", "register_merkle_root"),
+            attr("stage", "1"),
+            attr(
                 "merkle_root",
                 "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
             )
         ]
     );
 
-    let res = query(&deps, QueryMsg::LatestStage {}).unwrap();
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::LatestStage {}).unwrap();
     let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
     assert_eq!(1u8, latest_stage.latest_stage);
 
     let res = query(
-        &deps,
+        deps.as_ref(),
+        mock_env(),
         QueryMsg::MerkleRoot {
             stage: latest_stage.latest_stage,
         },
@@ -120,29 +121,29 @@ fn register_merkle_root() {
 
 #[test]
 fn update_merkle_root() {
-    let mut deps = mock_dependencies(20, &[]);
+    let mut deps = mock_dependencies(&[]);
 
-    let msg = InitMsg {
-        owner: HumanAddr::from("owner0000"),
-        mirror_token: HumanAddr::from("mirror0000"),
+    let msg = InstantiateMsg {
+        owner: "owner0000".to_string(),
+        mirror_token: "mirror0000".to_string(),
     };
 
-    let env = mock_env("addr0000", &[]);
-    let _res = init(&mut deps, env.clone(), msg).unwrap();
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // register new merkle root
-    let env = mock_env("owner0000", &[]);
-    let msg = HandleMsg::RegisterMerkleRoot {
+    let info = mock_info("owner0000", &[]);
+    let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
     };
 
-    let res = handle(&mut deps, env, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
-        res.log,
+        res.attributes,
         vec![
-            log("action", "register_merkle_root"),
-            log("stage", "1"),
-            log(
+            attr("action", "register_merkle_root"),
+            attr("stage", "1"),
+            attr(
                 "merkle_root",
                 "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37"
             )
@@ -150,28 +151,29 @@ fn update_merkle_root() {
     );
 
     // register new merkle root
-    let env = mock_env("owner0000", &[]);
-    let msg = HandleMsg::UpdateMerkleRoot {
+    let info = mock_info("owner0000", &[]);
+    let msg = ExecuteMsg::UpdateMerkleRoot {
         stage: 1,
         merkle_root: "12345678".to_string(),
     };
 
-    let res = handle(&mut deps, env, msg).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
-        res.log,
+        res.attributes,
         vec![
-            log("action", "update_merkle_root"),
-            log("stage", "1"),
-            log("merkle_root", "12345678")
+            attr("action", "update_merkle_root"),
+            attr("stage", "1"),
+            attr("merkle_root", "12345678")
         ]
     );
 
-    let res = query(&deps, QueryMsg::LatestStage {}).unwrap();
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::LatestStage {}).unwrap();
     let latest_stage: LatestStageResponse = from_binary(&res).unwrap();
     assert_eq!(1u8, latest_stage.latest_stage);
 
     let res = query(
-        &deps,
+        deps.as_ref(),
+        mock_env(),
         QueryMsg::MerkleRoot {
             stage: latest_stage.latest_stage,
         },
@@ -183,30 +185,30 @@ fn update_merkle_root() {
 
 #[test]
 fn claim() {
-    let mut deps = mock_dependencies(44, &[]);
+    let mut deps = mock_dependencies(&[]);
 
-    let msg = InitMsg {
-        owner: HumanAddr::from("owner0000"),
-        mirror_token: HumanAddr::from("mirror0000"),
+    let msg = InstantiateMsg {
+        owner: "owner0000".to_string(),
+        mirror_token: "mirror0000".to_string(),
     };
 
-    let env = mock_env("addr0000", &[]);
-    let _res = init(&mut deps, env, msg).unwrap();
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // Register merkle roots
-    let env = mock_env("owner0000", &[]);
-    let msg = HandleMsg::RegisterMerkleRoot {
+    let info = mock_info("owner0000", &[]);
+    let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "85e33930e7a8f015316cb4a53a4c45d26a69f299fc4c83f17357e1fd62e8fd95".to_string(),
     };
-    let _res = handle(&mut deps, env, msg).unwrap();
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let env = mock_env("owner0000", &[]);
-    let msg = HandleMsg::RegisterMerkleRoot {
+    let info = mock_info("owner0000", &[]);
+    let msg = ExecuteMsg::RegisterMerkleRoot {
         merkle_root: "634de21cde1044f41d90373733b0f0fb1c1c71f9652b905cdf159e73c4cf0d37".to_string(),
     };
-    let _res = handle(&mut deps, env, msg).unwrap();
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let msg = HandleMsg::Claim {
+    let msg = ExecuteMsg::Claim {
         amount: Uint128::from(1000001u128),
         stage: 1u8,
         proof: vec![
@@ -217,31 +219,28 @@ fn claim() {
         ],
     };
 
-    let env = mock_env(
-        "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8".to_string(),
-        &[],
-    );
-    let res = handle(&mut deps, env.clone(), msg.clone()).unwrap();
+    let info = mock_info("terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
     assert_eq!(
         res.messages,
-        vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: HumanAddr::from("mirror0000"),
-            send: vec![],
-            msg: to_binary(&Cw20HandleMsg::Transfer {
-                recipient: HumanAddr::from("terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "mirror0000".to_string(),
+            funds: vec![],
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8".to_string(),
                 amount: Uint128::from(1000001u128),
             })
             .unwrap(),
-        })]
+        }))]
     );
 
     assert_eq!(
-        res.log,
+        res.attributes,
         vec![
-            log("action", "claim"),
-            log("stage", "1"),
-            log("address", "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
-            log("amount", "1000001")
+            attr("action", "claim"),
+            attr("stage", "1"),
+            attr("address", "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
+            attr("amount", "1000001")
         ]
     );
 
@@ -249,10 +248,11 @@ fn claim() {
         true,
         from_binary::<IsClaimedResponse>(
             &query(
-                &mut deps,
+                deps.as_ref(),
+                mock_env(),
                 QueryMsg::IsClaimed {
                     stage: 1,
-                    address: HumanAddr::from("terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
+                    address: "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8".to_string(),
                 }
             )
             .unwrap()
@@ -261,14 +261,14 @@ fn claim() {
         .is_claimed
     );
 
-    let res = handle(&mut deps, env.clone(), msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
     match res {
-        Err(StdError::GenericErr { msg, .. }) => assert_eq!(msg, "Already claimed"),
+        Err(StdError::GenericErr { msg, .. }) => assert_eq!(msg, "already claimed"),
         _ => panic!("DO NOT ENTER HERE"),
     }
 
     // Claim next airdrop
-    let msg = HandleMsg::Claim {
+    let msg = ExecuteMsg::Claim {
         amount: Uint128::from(2000001u128),
         stage: 2u8,
         proof: vec![
@@ -279,31 +279,28 @@ fn claim() {
         ],
     };
 
-    let env = mock_env(
-        "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8".to_string(),
-        &[],
-    );
-    let res = handle(&mut deps, env.clone(), msg.clone()).unwrap();
+    let info = mock_info("terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
     assert_eq!(
         res.messages,
-        vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: HumanAddr::from("mirror0000"),
-            send: vec![],
-            msg: to_binary(&Cw20HandleMsg::Transfer {
-                recipient: HumanAddr::from("terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "mirror0000".to_string(),
+            funds: vec![],
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8".to_string(),
                 amount: Uint128::from(2000001u128),
             })
             .unwrap(),
-        })]
+        }))]
     );
 
     assert_eq!(
-        res.log,
+        res.attributes,
         vec![
-            log("action", "claim"),
-            log("stage", "2"),
-            log("address", "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
-            log("amount", "2000001")
+            attr("action", "claim"),
+            attr("stage", "2"),
+            attr("address", "terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8"),
+            attr("amount", "2000001")
         ]
     );
 }

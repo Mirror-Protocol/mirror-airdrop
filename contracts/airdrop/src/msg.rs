@@ -1,19 +1,19 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{HumanAddr, Uint128};
+use cosmwasm_std::Uint128;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {
-    pub owner: HumanAddr,
-    pub mirror_token: HumanAddr,
+pub struct InstantiateMsg {
+    pub owner: String,
+    pub mirror_token: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum HandleMsg {
+pub enum ExecuteMsg {
     UpdateConfig {
-        owner: Option<HumanAddr>,
+        owner: Option<String>,
     },
     UpdateMerkleRoot {
         stage: u8,
@@ -29,24 +29,20 @@ pub enum HandleMsg {
     },
 }
 
-/// We currently take no arguments for migrations
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct MigrateMsg {}
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Config {},
     MerkleRoot { stage: u8 },
     LatestStage {},
-    IsClaimed { stage: u8, address: HumanAddr },
+    IsClaimed { stage: u8, address: String },
 }
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
-    pub owner: HumanAddr,
-    pub mirror_token: HumanAddr,
+    pub owner: String,
+    pub mirror_token: String,
 }
 
 // We define a custom struct for each query response
