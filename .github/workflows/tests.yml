@@ -1,0 +1,67 @@
+name: Formatting Check & Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "release/*"
+
+jobs:
+  clippy:
+    name: Actions - clippy
+    runs-on: ubuntu-latest
+    env:
+      CARGO_MANIFEST_DIR: contracts/airdrop/Cargo.toml
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          profile: minimal
+          override: true
+      - run: cargo fetch --manifest-path=${{ env.CARGO_MANIFEST_DIR }} --verbose
+      - run: cargo clippy --manifest-path=${{ env.CARGO_MANIFEST_DIR }} --all --all-targets -- -D warnings
+
+  rustfmt:
+    name: Actions - rustfmt
+    runs-on: ubuntu-latest
+    env:
+      CARGO_MANIFEST_DIR: contracts/airdrop/Cargo.toml
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          components: rustfmt
+          profile: minimal
+          override: true
+      - run: cargo fmt --manifest-path=${{ env.CARGO_MANIFEST_DIR }} -- --check
+
+  unit-test:
+    name: Actions - unit test
+    runs-on: ${{ matrix.os }}
+    env:
+      CARGO_MANIFEST_DIR: contracts/airdrop/Cargo.toml
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - run: cargo fetch --manifest-path=${{ env.CARGO_MANIFEST_DIR }} --verbose
+      - run: cargo build --manifest-path=${{ env.CARGO_MANIFEST_DIR }}
+      - run: cargo test --manifest-path=${{ env.CARGO_MANIFEST_DIR }} --verbose --all
+        env:
+          RUST_BACKTRACE: 1
