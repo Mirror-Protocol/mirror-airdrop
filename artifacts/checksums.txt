@@ -1,1 +1,0 @@
-753cf643f2125b75a9bc26d8ad85242a5f50da05aa2465c6beddef3d4ec6e92c  mirror_airdrop.wasm
