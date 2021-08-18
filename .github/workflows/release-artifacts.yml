@@ -7,6 +7,9 @@ on:
 
 jobs:
   release-artifacts:
+    env:
+      CONTRACT_DIR: contracts/airdrop
+      CARGO_MANIFEST_DIR: ${{ env.CONTRACT_DIR }}/Cargo.toml
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -20,10 +23,10 @@ jobs:
         uses: docker/setup-buildx-action@v1
       - name: Generate Cargo.lock
         run: |
-          cargo fetch --verbose
+          cargo fetch --manifest-path=${{ env.CARGO_MANIFEST_DIR }} --verbose
       - name: Build Artifacts
         run: |
-          docker run --rm -v "$(pwd)":/code \
+          docker run --rm -v "$(pwd)"/${{ env.CONTRACT_DIR }}:/code \
           --mount type=volume,source="$(basename "$(pwd)")_cache",target=/code/target \
           --mount type=volume,source=registry_cache,target=/usr/local/cargo/registry \
           cosmwasm/rust-optimizer:0.11.5
