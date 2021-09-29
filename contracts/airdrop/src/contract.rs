@@ -1,154 +1,146 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 use cosmwasm_std::{
-    log, to_binary, Api, Binary, CosmosMsg, Env, Extern, HandleResponse, HandleResult, HumanAddr,
-    InitResponse, InitResult, MigrateResponse, MigrateResult, Querier, StdError, StdResult,
-    Storage, Uint128, WasmMsg,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    Uint128, WasmMsg,
 };
 
 use crate::msg::{
-    ConfigResponse, HandleMsg, InitMsg, IsClaimedResponse, LatestStageResponse, MerkleRootResponse,
-    MigrateMsg, QueryMsg,
+    ConfigResponse, ExecuteMsg, InstantiateMsg, IsClaimedResponse, LatestStageResponse,
+    MerkleRootResponse, QueryMsg,
 };
-use crate::state::{
-    read_claimed, read_config, read_latest_stage, read_merkle_root, store_claimed, store_config,
-    store_latest_stage, store_merkle_root, Config,
-};
+use crate::state::{Config, CLAIM_INDEX, CONFIG, LATEST_STAGE, MERKLE_ROOT};
 
-use cw20::Cw20HandleMsg;
-use hex;
+use cw20::Cw20ExecuteMsg;
 use sha3::Digest;
 use std::convert::TryInto;
 
-pub fn init<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn instantiate(
+    deps: DepsMut,
     _env: Env,
-    msg: InitMsg,
-) -> InitResult {
-    store_config(
-        &mut deps.storage,
+    _info: MessageInfo,
+    msg: InstantiateMsg,
+) -> StdResult<Response> {
+    CONFIG.save(
+        deps.storage,
         &Config {
-            owner: deps.api.canonical_address(&msg.owner)?,
-            mirror_token: deps.api.canonical_address(&msg.mirror_token)?,
+            owner: deps.api.addr_canonicalize(&msg.owner)?,
+            mirror_token: deps.api.addr_canonicalize(&msg.mirror_token)?,
         },
     )?;
 
     let stage: u8 = 0;
-    store_latest_stage(&mut deps.storage, stage)?;
+    LATEST_STAGE.save(deps.storage, &stage)?;
 
-    Ok(InitResponse::default())
+    Ok(Response::default())
 }
 
-pub fn handle<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
-    msg: HandleMsg,
-) -> HandleResult {
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
-        HandleMsg::UpdateConfig { owner } => update_config(deps, env, owner),
-        HandleMsg::UpdateMerkleRoot { stage, merkle_root } => {
-            update_merkle_root(deps, env, stage, merkle_root)
+        ExecuteMsg::UpdateConfig { owner } => update_config(deps, env, info, owner),
+        ExecuteMsg::UpdateMerkleRoot { stage, merkle_root } => {
+            update_merkle_root(deps, env, info, stage, merkle_root)
         }
-        HandleMsg::RegisterMerkleRoot { merkle_root } => {
-            register_merkle_root(deps, env, merkle_root)
+        ExecuteMsg::RegisterMerkleRoot { merkle_root } => {
+            register_merkle_root(deps, env, info, merkle_root)
         }
-        HandleMsg::Claim {
+        ExecuteMsg::Claim {
             stage,
             amount,
             proof,
-        } => claim(deps, env, stage, amount, proof),
+        } => claim(deps, env, info, stage, amount, proof),
     }
 }
 
-pub fn update_merkle_root<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
+pub fn update_merkle_root(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
     stage: u8,
     merkle_root: String,
-) -> StdResult<HandleResponse> {
-    let config: Config = read_config(&deps.storage)?;
-    if deps.api.canonical_address(&env.message.sender)? != config.owner {
-        return Err(StdError::unauthorized());
+) -> StdResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+        return Err(StdError::generic_err("unauthorized"));
     }
 
-    store_merkle_root(&mut deps.storage, stage, merkle_root.to_string())?;
+    MERKLE_ROOT.save(deps.storage, &[stage], &merkle_root)?;
 
-    Ok(HandleResponse {
-        messages: vec![],
-        log: vec![
-            log("action", "update_merkle_root"),
-            log("stage", stage),
-            log("merkle_root", merkle_root),
-        ],
-        data: None,
-    })
+    Ok(Response::new().add_attributes(vec![
+        ("action", "update_merkle_root"),
+        ("stage", &stage.to_string()),
+        ("merkle_root", &merkle_root),
+    ]))
 }
 
-pub fn update_config<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
-    owner: Option<HumanAddr>,
-) -> StdResult<HandleResponse> {
-    let mut config: Config = read_config(&deps.storage)?;
-    if deps.api.canonical_address(&env.message.sender)? != config.owner {
-        return Err(StdError::unauthorized());
+pub fn update_config(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    owner: Option<String>,
+) -> StdResult<Response> {
+    let mut config: Config = CONFIG.load(deps.storage)?;
+    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+        return Err(StdError::generic_err("unauthorized"));
     }
 
     if let Some(owner) = owner {
-        config.owner = deps.api.canonical_address(&owner)?;
+        config.owner = deps.api.addr_canonicalize(&owner)?;
     }
 
-    store_config(&mut deps.storage, &config)?;
-    Ok(HandleResponse {
-        messages: vec![],
-        log: vec![log("action", "update_config")],
-        data: None,
-    })
+    CONFIG.save(deps.storage, &config)?;
+    Ok(Response::new().add_attribute("action", "update_config"))
 }
 
-pub fn register_merkle_root<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
+pub fn register_merkle_root(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
     merkle_root: String,
-) -> StdResult<HandleResponse> {
-    let config: Config = read_config(&deps.storage)?;
-    if deps.api.canonical_address(&env.message.sender)? != config.owner {
-        return Err(StdError::unauthorized());
+) -> StdResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
+        return Err(StdError::generic_err("unauthorized"));
     }
 
-    let latest_stage: u8 = read_latest_stage(&deps.storage)?;
+    let latest_stage: u8 = LATEST_STAGE.load(deps.storage)?;
     let stage = latest_stage + 1;
 
-    store_merkle_root(&mut deps.storage, stage, merkle_root.to_string())?;
-    store_latest_stage(&mut deps.storage, stage)?;
+    MERKLE_ROOT.save(deps.storage, &[stage], &merkle_root)?;
+    LATEST_STAGE.save(deps.storage, &stage)?;
 
-    Ok(HandleResponse {
-        messages: vec![],
-        log: vec![
-            log("action", "register_merkle_root"),
-            log("stage", stage),
-            log("merkle_root", merkle_root),
-        ],
-        data: None,
-    })
+    Ok(Response::new().add_attributes(vec![
+        ("action", "register_merkle_root"),
+        ("stage", &stage.to_string()),
+        ("merkle_root", &merkle_root),
+    ]))
 }
 
-pub fn claim<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    env: Env,
+pub fn claim(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
     stage: u8,
     amount: Uint128,
     proof: Vec<String>,
-) -> StdResult<HandleResponse> {
-    let config: Config = read_config(&deps.storage)?;
-    let merkle_root: String = read_merkle_root(&deps.storage, stage)?;
+) -> StdResult<Response> {
+    let config: Config = CONFIG.load(deps.storage)?;
+    let merkle_root: String = MERKLE_ROOT.load(deps.storage, &[stage])?;
 
-    let user_raw = deps.api.canonical_address(&env.message.sender)?;
+    let user_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
 
     // If user claimed target stage, return err
-    if read_claimed(&deps.storage, &user_raw, stage)? {
-        return Err(StdError::generic_err("Already claimed"));
+    if CLAIM_INDEX
+        .may_load(deps.storage, (user_raw.as_slice(), &[stage]))?
+        .unwrap_or(false)
+    {
+        return Err(StdError::generic_err("already claimed"));
     }
 
-    let user_input: String = env.message.sender.to_string() + &amount.to_string();
+    let user_input: String = info.sender.to_string() + &amount.to_string();
     let mut hash: [u8; 32] = sha3::Keccak256::digest(user_input.as_bytes())
         .as_slice()
         .try_into()
@@ -177,107 +169,88 @@ pub fn claim<S: Storage, A: Api, Q: Querier>(
     }
 
     // Update claim index to the current stage
-    store_claimed(&mut deps.storage, &user_raw, stage)?;
+    CLAIM_INDEX.save(deps.storage, (user_raw.as_slice(), &[stage]), &true)?;
 
-    Ok(HandleResponse {
-        messages: vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps.api.human_address(&config.mirror_token)?,
-            send: vec![],
-            msg: to_binary(&Cw20HandleMsg::Transfer {
-                recipient: env.message.sender.clone(),
+    Ok(Response::new()
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: deps.api.addr_humanize(&config.mirror_token)?.to_string(),
+            funds: vec![],
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: info.sender.to_string(),
                 amount,
             })?,
-        })],
-        log: vec![
-            log("action", "claim"),
-            log("stage", stage),
-            log("address", env.message.sender),
-            log("amount", amount),
-        ],
-        data: None,
-    })
+        }))
+        .add_attributes(vec![
+            ("action", "claim"),
+            ("stage", &stage.to_string()),
+            ("address", info.sender.as_str()),
+            ("amount", &amount.to_string()),
+        ]))
 }
 
 fn bytes_cmp(a: [u8; 32], b: [u8; 32]) -> std::cmp::Ordering {
     let mut i = 0;
     while i < 32 {
-        if a[i] > b[i] {
-            return std::cmp::Ordering::Greater;
-        } else if a[i] < b[i] {
-            return std::cmp::Ordering::Less;
+        match a[i].cmp(&b[i]) {
+            std::cmp::Ordering::Greater => return std::cmp::Ordering::Greater,
+            std::cmp::Ordering::Less => return std::cmp::Ordering::Less,
+            _ => {}
         }
 
         i += 1;
     }
 
-    return std::cmp::Ordering::Equal;
+    std::cmp::Ordering::Equal
 }
 
-pub fn query<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    msg: QueryMsg,
-) -> StdResult<Binary> {
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::MerkleRoot { stage } => to_binary(&query_merkle_root(deps, stage)?),
-        QueryMsg::LatestStage {} => to_binary(&query_latest_stage(deps)?),
+        QueryMsg::Config {} => to_binary(&query_config(deps, env)?),
+        QueryMsg::MerkleRoot { stage } => to_binary(&query_merkle_root(deps, env, stage)?),
+        QueryMsg::LatestStage {} => to_binary(&query_latest_stage(deps, env)?),
         QueryMsg::IsClaimed { stage, address } => {
-            to_binary(&query_is_claimed(deps, stage, address)?)
+            to_binary(&query_is_claimed(deps, env, stage, address)?)
         }
     }
 }
 
-pub fn query_config<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-) -> StdResult<ConfigResponse> {
-    let state = read_config(&deps.storage)?;
+pub fn query_config(deps: Deps, _env: Env) -> StdResult<ConfigResponse> {
+    let state = CONFIG.load(deps.storage)?;
     let resp = ConfigResponse {
-        owner: deps.api.human_address(&state.owner)?,
-        mirror_token: deps.api.human_address(&state.mirror_token)?,
+        owner: deps.api.addr_humanize(&state.owner)?.to_string(),
+        mirror_token: deps.api.addr_humanize(&state.mirror_token)?.to_string(),
     };
 
     Ok(resp)
 }
 
-pub fn query_merkle_root<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    stage: u8,
-) -> StdResult<MerkleRootResponse> {
-    let merkle_root = read_merkle_root(&deps.storage, stage)?;
-    let resp = MerkleRootResponse {
-        stage: stage,
-        merkle_root: merkle_root,
-    };
+pub fn query_merkle_root(deps: Deps, _env: Env, stage: u8) -> StdResult<MerkleRootResponse> {
+    let merkle_root = MERKLE_ROOT.load(deps.storage, &[stage])?;
+    let resp = MerkleRootResponse { stage, merkle_root };
 
     Ok(resp)
 }
 
-pub fn query_latest_stage<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-) -> StdResult<LatestStageResponse> {
-    let latest_stage = read_latest_stage(&deps.storage)?;
+pub fn query_latest_stage(deps: Deps, _env: Env) -> StdResult<LatestStageResponse> {
+    let latest_stage = LATEST_STAGE.load(deps.storage)?;
     let resp = LatestStageResponse { latest_stage };
 
     Ok(resp)
 }
 
-pub fn query_is_claimed<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn query_is_claimed(
+    deps: Deps,
+    _env: Env,
     stage: u8,
-    address: HumanAddr,
+    address: String,
 ) -> StdResult<IsClaimedResponse> {
-    let user_raw = deps.api.canonical_address(&address)?;
+    let user_raw = deps.api.addr_canonicalize(&address)?;
     let resp = IsClaimedResponse {
-        is_claimed: read_claimed(&deps.storage, &user_raw, stage)?,
+        is_claimed: CLAIM_INDEX
+            .may_load(deps.storage, (user_raw.as_slice(), &[stage]))?
+            .unwrap_or(false),
     };
 
     Ok(resp)
-}
-
-pub fn migrate<S: Storage, A: Api, Q: Querier>(
-    _deps: &mut Extern<S, A, Q>,
-    _env: Env,
-    _msg: MigrateMsg,
-) -> MigrateResult {
-    Ok(MigrateResponse::default())
 }

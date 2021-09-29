@@ -1,6 +1,6 @@
 [package]
 name = "mirror-airdrop"
-version = "1.0.0"
+version = "0.0.0"
 authors = ["Terraform Labs, PTE."]
 edition = "2018"
 description = "A Airdrop contract for Mirror Protocol - allow users to claim rewards with Merkle Tree based proof"
@@ -29,22 +29,19 @@ incremental = false
 overflow-checks = true
 
 [features]
-default = ["cranelift"]
 # for quicker tests, cargo test --lib
 # for more explicit tests, cargo test --features=backtraces
-backtraces = ["cosmwasm-std/backtraces", "cosmwasm-vm/backtraces"]
-cranelift = ["cosmwasm-vm/default-cranelift"]
-singlepass = ["cosmwasm-vm/default-singlepass"]
+backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-cw20 = "0.2"
-cosmwasm-std = { version = "0.10.1", features = ["iterator"] }
-cosmwasm-storage = { version = "0.10.1", features = ["iterator"] }
-schemars = "0.7"
+cw20 = "0.8.0"
+cw-storage-plus = "0.8.0"
+cosmwasm-std = { version = "0.16.0" }
+cosmwasm-storage = { version = "0.16.0" }
+schemars = "0.8.1"
 sha3 = { version = "0.9.1", default-features = false }
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 hex = "0.4"
 
 [dev-dependencies]
-cosmwasm-vm = { version = "0.10.1", default-features = false, features = ["iterator"] }
-cosmwasm-schema = "0.10.1"
+cosmwasm-schema = "0.16.0"
