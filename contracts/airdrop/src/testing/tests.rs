@@ -244,8 +244,7 @@ fn claim() {
         ]
     );
 
-    assert_eq!(
-        true,
+    assert!(
         from_binary::<IsClaimedResponse>(
             &query(
                 deps.as_ref(),
@@ -261,7 +260,7 @@ fn claim() {
         .is_claimed
     );
 
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone());
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
         Err(StdError::GenericErr { msg, .. }) => assert_eq!(msg, "already claimed"),
         _ => panic!("DO NOT ENTER HERE"),
@@ -280,7 +279,7 @@ fn claim() {
     };
 
     let info = mock_info("terra1qfqa2eu9wp272ha93lj4yhcenrc6ymng079nu8", &[]);
-    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()).unwrap();
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         res.messages,
         vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
