@@ -10,7 +10,7 @@ class Snapshot {
   async takeSnapshot(block: number): Promise<{ [delegator: string]: bigint }> {
     const delegationSnapshot: { [delegator: string]: bigint } = {};
     const validators = JSON.parse(
-      await request.get(`${this.URL}/staking/validators?height=${block}`, {
+      await request.get(`${this.URL}/staking/validators?height=${block}&limit=99999999`, {
         timeout: 10000000
       })
     )['result'];
@@ -27,7 +27,7 @@ class Snapshot {
         };
       }> = JSON.parse(
         await request.get(
-          `${this.URL}/staking/validators/${operator_addr}/delegations?height=${block}`
+          `${this.URL}/staking/validators/${operator_addr}/delegations?height=${block}&limit=99999999`
         )
       )['result'];
 
