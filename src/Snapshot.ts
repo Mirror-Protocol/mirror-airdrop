@@ -18,9 +18,11 @@ class Snapshot {
     for (let i = 0; i < validators.length; i++) {
       const operator_addr = validators[i]['operator_address'];
       const delegators: Array<{
-        delegator_address: string;
-        validator_address: string;
-        shares: string;
+        delegation: {
+          delegator_address: string;
+          validator_address: string;  
+          shares: string;
+        };
         balance: {
           denom: string;
           amount: string;
@@ -31,13 +33,13 @@ class Snapshot {
         )
       )['result'];
 
-      delegators.forEach((delegation) => {
-        if (delegationSnapshot[delegation.delegator_address] === undefined) {
-          delegationSnapshot[delegation.delegator_address] = BigInt(0);
+      delegators.forEach((del) => {
+        if (delegationSnapshot[del.delegation.delegator_address] === undefined) {
+          delegationSnapshot[del.delegation.delegator_address] = BigInt(0);
         }
 
-        delegationSnapshot[delegation.delegator_address] += BigInt(
-          delegation.balance.amount
+        delegationSnapshot[del.delegation.delegator_address] += BigInt(
+          del.balance.amount
         );
       });
     }
