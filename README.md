@@ -48,8 +48,12 @@ console.log("Verified", airdrop.verify(proof, accounts[0]));
 ```javascript
 import { Snapshot } from "@mirror-protocol/mirror-airdrop";
 
-const snapshot = new Snapshot("https://lcd.terra.dev");
-snapshot.takeSnapshot(10000).then(delegators => {
+
+const BLOCK_HEIGHT = 6668263
+const LCD_URL = "https://lcd.terra.dev" // note that for public infrastructure delegations block height is disabled
+
+const snapshot = new Snapshot(LCD_URL);
+snapshot.takeSnapshot(BLOCK_HEIGHT).then(delegators => {
   console.log(delegators)
 });
 ```
